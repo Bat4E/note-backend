@@ -10,6 +10,7 @@ type node in the command line in order to use node-repl
 
 const express = require("express"); // importing express
 const app = express(); // express function used to create an express application
+app.use(express.static("dist"));
 
 let notes = [
   {

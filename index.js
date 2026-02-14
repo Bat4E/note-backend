@@ -10,7 +10,6 @@ type node in the command line in order to use node-repl
 
 const express = require("express"); // importing express
 const app = express(); // express function used to create an express application
-app.use(express.static("dist"));
 
 let notes = [
   {
@@ -43,13 +42,14 @@ const requestLogger = (request, response, next) => {
   next(); // this function yields control to the next middleware
 };
 
-const cors = require("cors"); // middleware that allows request from all origins
+// no longer needed, since we have a proxy (cors)
+// const cors = require("cors"); // middleware that allows request from all origins
 
-app.use(cors());
-
-app.use(express.json()); // express json-parser "command" it is also a middleware
+// app.use(cors()); // no longer needed, since we have a proxy
 
 app.use(requestLogger); // middleware function, needs to be used after our parser
+app.use(express.static("dist"));
+app.use(express.json()); // express json-parser "command" it is also a middleware
 
 // a route with an event handler to handle HTTP GET requests to the '/' aka root of the application
 // the event handler accepts two parameters: 1st one contains all the info of the HTTP request

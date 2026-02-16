@@ -13,7 +13,7 @@ const url = process.env.MONGODB_URI;
 
 console.log("connecting to", url);
 mongoose
-  .connect(url, { family: 4 }) // this one just has only param url
+  .connect(url) // this one just has only param url
   .then((result) => {
     console.log("connected to MongoDB");
   })

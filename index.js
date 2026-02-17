@@ -29,14 +29,27 @@ const requestLogger = (request, response, next) => {
   next(); // this function yields control to the next middleware
 };
 
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message);
+
+  if (error.name === "CastError") {
+    // the error was caused by an invalid object id for Mongo
+    return response.status(400).send({ error: "malformatted id" });
+  }
+
+  next(error);
+};
+
 // no longer needed, since we have a proxy (cors)
 // const cors = require("cors"); // middleware that allows request from all origins
+// the execution order of middleware is the same as the order that they are loaded into Express
+// with the app.use function.
 
 // app.use(cors()); // no longer needed, since we have a proxy
 
-app.use(requestLogger); // middleware function, needs to be used after our parser
 app.use(express.static("dist"));
 app.use(express.json()); // express json-parser "command" it is also a middleware
+app.use(requestLogger); // middleware function, needs to be used after our parser
 
 // a route with an event handler to handle HTTP GET requests to the '/' aka root of the application
 // the event handler accepts two parameters: 1st one contains all the info of the HTTP request
@@ -53,10 +66,18 @@ app.get("/api/notes", (request, response) => {
 
 // route for an individual note
 // using the colon : express syntax to define a parameter in routes (:id) is a parameter
-app.get("/api/notes/:id", (request, response) => {
-  Note.findById(request.params.id).then((note) => {
-    response.json(note);
-  });
+app.get("/api/notes/:id", (request, response, next) => {
+  Note.findById(request.params.id)
+    .then((note) => {
+      if (note) {
+        response.json(note);
+      } else {
+        response.status(404).end();
+      }
+    })
+    .catch((error) => {
+      next(error); // continues to the error handler middleware
+    });
 });
 
 /* 
@@ -65,13 +86,6 @@ transforms it into JS object and then
 attaches it to the body property of the request object before
 the route handler is called
 */
-
-// may not be needed anymore
-const generateId = () => {
-  const maxId =
-    notes.length > 0 ? Math.max(...notes.map((n) => Number(n.id))) : 0; // using the spread syntax ...notes, transforms the array into individual items (aka numbers)
-  return String(maxId + 1);
-};
 
 // without the json-parser from app.use(express.json()) the body property (data) would be undefined
 app.post("/api/notes", (request, response) => {
@@ -91,19 +105,49 @@ app.post("/api/notes", (request, response) => {
   });
 });
 
-app.delete("/api/notes/:id", (request, response) => {
-  const id = request.params.id;
-  notes = notes.filter((note) => note.id !== id);
+// updating one note
+app.put("/api/notes/:id", (request, response, next) => {
+  const { content, important } = request.body;
 
-  response.status(204).end();
+  // nested promises in other words, chained promises
+  Note.findById(request.params.id) // note fetched from the database using findById method
+    .then((note) => {
+      if (!note) {
+        return response.status(404).end();
+      }
+
+      note.content = content;
+      note.important = important;
+
+      return note.save().then((updatedNote) => {
+        // http request responds by sending the updated note in the response
+        response.json(updatedNote);
+      });
+    })
+    .catch((error) => next(error));
+});
+
+app.delete("/api/notes/:id", (request, response, next) => {
+  Note.findByIdAndDelete(request.params.id)
+    .then((result) => {
+      // result could be used to check if a resource was actually deleted
+      response.status(204).end(); // status code 204 -> no content
+    })
+    .catch((error) => next(error)); // any exceptions passed to the next handler
 });
 
 // middleware function to catch when no router handler processes the HTTP requests
+// handler of requests with unknown endpoint
 const unknownEndpoint = (request, response) => {
   response.status(404).send({ error: "unknown endpoint" });
 };
 
+// needs to loaded after all endpoints have been defined
 app.use(unknownEndpoint);
+
+// this has to be the last loaded middleware, also all the routes should be registered before this!
+// handler of requests that result in errors
+app.use(errorHandler);
 
 const PORT = process.env.PORT; // environment variable PORT or 3001
 app.listen(PORT, () => {

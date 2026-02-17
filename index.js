@@ -82,7 +82,7 @@ app.get("/api/notes/:id", (request, response, next) => {
     });
 });
 
-/* 
+/*
 The JSON-parser takes the JSON data of a request,
 transforms it into JS object and then
 attaches it to the body property of the request object before

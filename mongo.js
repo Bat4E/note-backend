@@ -11,7 +11,7 @@ const url = `mongodb+srv://fullstack:${password}@cluster0.5zsi8u4.mongodb.net/no
 
 mongoose.set("strictQuery", false);
 
-mongoose.connect(url, { family: 4 });
+mongoose.connect(url);
 
 const noteSchema = new mongoose.Schema({
   content: String,
@@ -20,10 +20,12 @@ const noteSchema = new mongoose.Schema({
 
 const Note = mongoose.model("Note", noteSchema);
 
+/*
 const note = new Note({
   content: "Mongoose makes things easy",
   important: true,
 });
+*/
 
 /*
 note.save().then((result) => {
